@@ -107,18 +107,23 @@ function App() {
 
     // Actualizar las fotos en la sesión seleccionada
     if (selectedPatient && selectedSession !== null) {
-      setPatients(prev => prev.map(p => {
-        if (p.id === selectedPatient.id) {
-          const updatedSessions = [...p.sesiones];
-          updatedSessions[selectedSession] = {
-            ...updatedSessions[selectedSession],
-            fotos: updatedPhotos,
-            comentarios: comments
-          };
-          return { ...p, sesiones: updatedSessions };
-        }
-        return p;
-      }));
+      const updatedPatient = {
+        ...selectedPatient,
+        sesiones: selectedPatient.sesiones.map((session, idx) => {
+          if (idx === selectedSession) {
+            return {
+              ...session,
+              fotos: updatedPhotos,
+              comentarios: comments
+            };
+          }
+          return session;
+        })
+      };
+      setPatients(prev => prev.map(p => 
+        p.id === selectedPatient.id ? updatedPatient : p
+      ));
+      setSelectedPatient(updatedPatient);
     }
   };
 
