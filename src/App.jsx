@@ -3,6 +3,8 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import PatientForm from './components/PatientForm';
 import PatientList from './components/PatientList';
+import SessionList from './components/SessionList';
+import SessionForm from './components/SessionForm';
 import PhotoButtons from './components/photos/PhotoButtons';
 import logoCarralero from './assets/templates/Logotipo-horizontal-Dental-Carralero.png';
 import './App.css';
@@ -10,7 +12,8 @@ import './App.css';
 function App() {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [view, setView] = useState('list'); // 'list', 'form', 'photos'
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [view, setView] = useState('list'); // 'list', 'form', 'sessions', 'session-form', 'photos'
   const [photos, setPhotos] = useState([]);
   const [comments, setComments] = useState('');
 
@@ -28,34 +31,73 @@ function App() {
   }, [patients]);
 
   const handleAddPatient = (newPatient) => {
-    const patientWithPhotos = { ...newPatient, photos: [], comments: '' };
-    setPatients(prev => [...prev, patientWithPhotos]);
-    setSelectedPatient(patientWithPhotos);
-    setView('photos');
-    setPhotos([]);
-    setComments('');
+    const patientWithSessions = { 
+      ...newPatient, 
+      sesiones: [],
+      photos: [], 
+      comments: '' 
+    };
+    setPatients(prev => [...prev, patientWithSessions]);
+    setSelectedPatient(patientWithSessions);
+    setView('sessions');
   };
 
   const handleEditPatient = (editedPatient) => {
     setPatients(prev => prev.map(p => 
-      p.id === editedPatient.id ? { ...editedPatient, photos: p.photos || [], comments: p.comments || '' } : p
+      p.id === editedPatient.id ? { ...editedPatient, sesiones: p.sesiones || [], photos: p.photos || [], comments: p.comments || '' } : p
     ));
     setSelectedPatient(editedPatient);
-    setView('photos');
-    // Cargar las fotos existentes del paciente
-    const patient = patients.find(p => p.id === editedPatient.id);
-    if (patient) {
-      setPhotos(patient.photos || []);
-      setComments(patient.comments || '');
-    }
+    setView('sessions');
   };
 
   const handleSelectPatient = (patient) => {
     setSelectedPatient(patient);
+    setView('sessions');
+  };
+
+  const handleCreateSession = () => {
+    setSelectedSession(null);
+    setView('session-form');
+  };
+
+  const handleEditSession = (sessionIndex) => {
+    setSelectedSession(sessionIndex);
+    setView('session-form');
+  };
+
+  const handleSelectSession = (sessionIndex) => {
+    setSelectedSession(sessionIndex);
     setView('photos');
-    // Cargar las fotos existentes del paciente
-    setPhotos(patient.photos || []);
-    setComments(patient.comments || '');
+    const session = selectedPatient.sesiones[sessionIndex];
+    setPhotos(session.fotos || []);
+    setComments(session.comentarios || '');
+  };
+
+  const handleSessionSubmit = (sessionData) => {
+    if (selectedSession !== null) {
+      // Editar sesión existente
+      const updatedPatient = {
+        ...selectedPatient,
+        sesiones: selectedPatient.sesiones.map((s, idx) => 
+          idx === selectedSession ? sessionData : s
+        )
+      };
+      setPatients(prev => prev.map(p => 
+        p.id === selectedPatient.id ? updatedPatient : p
+      ));
+      setSelectedPatient(updatedPatient);
+    } else {
+      // Crear nueva sesión
+      const updatedPatient = {
+        ...selectedPatient,
+        sesiones: [...(selectedPatient.sesiones || []), sessionData]
+      };
+      setPatients(prev => prev.map(p => 
+        p.id === selectedPatient.id ? updatedPatient : p
+      ));
+      setSelectedPatient(updatedPatient);
+    }
+    setView('sessions');
   };
 
   const handleTakePhoto = (imageData, type) => {
@@ -63,14 +105,20 @@ function App() {
     const updatedPhotos = photos.filter(p => p.type !== type).concat(newPhoto);
     setPhotos(updatedPhotos);
 
-    // Actualizar las fotos en el paciente seleccionado
-    if (selectedPatient) {
-      setPatients(prev => prev.map(p =>
-        p.id === selectedPatient.id
-          ? { ...p, photos: updatedPhotos, comments }
-          : p
-      ));
-      setSelectedPatient(prev => ({ ...prev, photos: updatedPhotos }));
+    // Actualizar las fotos en la sesión seleccionada
+    if (selectedPatient && selectedSession !== null) {
+      setPatients(prev => prev.map(p => {
+        if (p.id === selectedPatient.id) {
+          const updatedSessions = [...p.sesiones];
+          updatedSessions[selectedSession] = {
+            ...updatedSessions[selectedSession],
+            fotos: updatedPhotos,
+            comentarios: comments
+          };
+          return { ...p, sesiones: updatedSessions };
+        }
+        return p;
+      }));
     }
   };
 
@@ -78,157 +126,155 @@ function App() {
     const updatedPhotos = photos.filter(p => p.type !== type);
     setPhotos(updatedPhotos);
 
-    // Actualizar las fotos en el paciente seleccionado
-    if (selectedPatient) {
-      setPatients(prev => prev.map(p =>
-        p.id === selectedPatient.id
-          ? { ...p, photos: updatedPhotos, comments }
-          : p
-      ));
-      setSelectedPatient(prev => ({ ...prev, photos: updatedPhotos }));
+    // Actualizar las fotos en la sesión seleccionada
+    if (selectedPatient && selectedSession !== null) {
+      setPatients(prev => prev.map(p => {
+        if (p.id === selectedPatient.id) {
+          const updatedSessions = [...p.sesiones];
+          updatedSessions[selectedSession] = {
+            ...updatedSessions[selectedSession],
+            fotos: updatedPhotos,
+            comentarios: comments
+          };
+          return { ...p, sesiones: updatedSessions };
+        }
+        return p;
+      }));
     }
   };
 
   const handleCommentsChange = (newComments) => {
     setComments(newComments);
     
-    // Actualizar los comentarios en el paciente seleccionado
-    if (selectedPatient) {
-      setPatients(prev => prev.map(p =>
-        p.id === selectedPatient.id
-          ? { ...p, comments: newComments }
-          : p
-      ));
-      setSelectedPatient(prev => ({ ...prev, comments: newComments }));
+    // Actualizar los comentarios en la sesión seleccionada
+    if (selectedPatient && selectedSession !== null) {
+      setPatients(prev => prev.map(p => {
+        if (p.id === selectedPatient.id) {
+          const updatedSessions = [...p.sesiones];
+          updatedSessions[selectedSession] = {
+            ...updatedSessions[selectedSession],
+            comentarios: newComments
+          };
+          return { ...p, sesiones: updatedSessions };
+        }
+        return p;
+      }));
     }
   };
 
   const handleBackToList = () => {
     setSelectedPatient(null);
+    setSelectedSession(null);
     setView('list');
     setPhotos([]);
     setComments('');
   };
 
-  // Crear nueva sesión para el paciente seleccionado
-  const addSessionToPatient = () => {
-    if (selectedPatient === null) return;
-    const newSession = {
-      fecha: new Date().toISOString(),
-      fotos: [],
-      comentarios: ''
-    };
-    setPatients(prev => prev.map((p, idx) =>
-      idx === selectedPatient.id
-        ? { ...p, sesiones: [...p.sesiones, newSession] }
-        : p
-    ));
+  const handleBackToSessions = () => {
+    setSelectedSession(null);
+    setView('sessions');
+    setPhotos([]);
+    setComments('');
   };
 
-  // Añadir o actualizar comentarios de una sesión
-  const updateSessionComments = (sessionIndex, comments) => {
-    if (selectedPatient === null) return;
-    
-    setPatients(prev => {
-      const newPatients = prev.map((p, pIdx) => {
-        if (pIdx !== selectedPatient.id) return p;
-        return {
-          ...p,
-          sesiones: p.sesiones.map((s, sIdx) =>
-            sIdx === sessionIndex
-              ? { ...s, comentarios: comments }
-              : s
-          )
-        };
-      });
-      
-      localStorage.setItem('patients', JSON.stringify(newPatients));
-      return newPatients;
-    });
+  const handleDeleteSession = (sessionIndex) => {
+    const updatedPatient = {
+      ...selectedPatient,
+      sesiones: selectedPatient.sesiones.filter((_, idx) => idx !== sessionIndex)
+    };
+    setPatients(prev => prev.map(p => 
+      p.id === selectedPatient.id ? updatedPatient : p
+    ));
+    setSelectedPatient(updatedPatient);
   };
 
   // Generar PDF con todas las fotos y datos
-  const generatePDF = async (patient, sessionIndex) => {
-    const session = patient.sesiones[sessionIndex];
-    // Crear PDF en formato A4
+  const generatePDF = async () => {
+    if (!selectedPatient || selectedSession === null) return;
+
+    const session = selectedPatient.sesiones[selectedSession];
+    const fotos = session.fotos || [];
+    const comentarios = session.comentarios || '';
+    const fecha = session.fecha ? new Date(session.fecha) : new Date();
+    const nombreSesion = session.nombre || `Sesión ${selectedSession + 1}`;
+
+    // Crear PDF en formato A4 horizontal
     const pdf = new jsPDF({
-      orientation: 'portrait',
+      orientation: 'landscape',
       unit: 'mm',
       format: 'a4'
     });
 
-    // Dimensiones A4 en mm
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const margin = 20;
+    // Dimensiones A4 horizontal en mm
+    const pageWidth = 297;
+    const pageHeight = 210;
+    const margin = 12;
+    const headerHeight = 24;
     let yOffset = margin;
 
-    // Añadir logo
-    const logoWidth = 60;
-    const logoHeight = 20;
+    // Logo y datos alineados horizontalmente
+    const logoWidth = 50;
+    const logoHeight = 18;
     pdf.addImage(logoCarralero, 'PNG', margin, yOffset, logoWidth, logoHeight);
-    yOffset += logoHeight + 10;
-
-    // Datos del paciente
     pdf.setFontSize(12);
-    pdf.text(`Paciente: ${patient.nombre} ${patient.apellidos}`, margin, yOffset);
-    yOffset += 7;
-    pdf.text(`Ficha: ${patient.ficha}`, margin, yOffset);
-    yOffset += 7;
-    pdf.text(`Doctor: ${patient.doctor}`, margin, yOffset);
-    yOffset += 7;
-    pdf.text(`Fecha: ${new Date(session.fecha).toLocaleDateString()}`, margin, yOffset);
-    yOffset += 15;
+    const datosX = margin + logoWidth + 8;
+    const datosY = yOffset + 6;
+    pdf.text(`Paciente: ${selectedPatient.nombre || ''} ${selectedPatient.apellidos || ''}`, datosX, datosY);
+    pdf.text(`Doctor: ${selectedPatient.doctor || ''}`, datosX, datosY + 7);
+    pdf.text(`Ficha: ${selectedPatient.ficha || ''}`, datosX + 80, datosY);
+    pdf.text(`Fecha: ${fecha.toLocaleDateString()}`, datosX + 80, datosY + 7);
+    pdf.text(`Sesión: ${nombreSesion}`, datosX + 160, datosY);
+    yOffset += headerHeight;
 
-    // Configurar grid para fotos (3x3)
+    // Área disponible para el grid de fotos
+    const gridTop = yOffset;
+    const gridHeight = pageHeight - gridTop - margin - 18; // 18mm para comentarios si hay espacio
+    const gridWidth = pageWidth - 2 * margin;
     const photosPerRow = 3;
-    const photoWidth = (pageWidth - 2 * margin - 20) / photosPerRow;
-    const photoHeight = photoWidth * 0.75; // Proporción 4:3
-    let currentX = margin;
+    const photosPerCol = 3;
+    const cellWidth = (gridWidth - (photosPerRow - 1) * 4) / photosPerRow;
+    const cellHeight = (gridHeight - (photosPerCol - 1) * 4) / photosPerCol;
 
-    for (const foto of session.fotos) {
-      try {
-        // Si no hay espacio vertical, nueva página
-        if (yOffset + photoHeight > pageHeight - margin) {
-          pdf.addPage();
-          yOffset = margin;
-          currentX = margin;
+    let count = 0;
+    for (let row = 0; row < photosPerCol; row++) {
+      for (let col = 0; col < photosPerRow; col++) {
+        if (count >= fotos.length) break;
+        const foto = fotos[count];
+        const x = margin + col * (cellWidth + 4);
+        const y = gridTop + row * (cellHeight + 4);
+        try {
+          // Calcular tamaño de la imagen manteniendo proporción
+          const img = new window.Image();
+          img.src = foto.data;
+          let drawW = cellWidth;
+          let drawH = cellHeight;
+          if (img.width && img.height) {
+            const ratio = Math.min(cellWidth / img.width, cellHeight / img.height);
+            drawW = img.width * ratio;
+            drawH = img.height * ratio;
+          }
+          // Centrar la imagen en la celda
+          const offsetX = x + (cellWidth - drawW) / 2;
+          const offsetY = y + (cellHeight - drawH) / 2;
+          pdf.addImage(foto.data, 'JPEG', offsetX, offsetY, drawW, drawH);
+        } catch (error) {
+          console.error('Error al procesar imagen:', error);
         }
-
-        // Añadir foto
-        pdf.addImage(foto.data, 'JPEG', currentX, yOffset, photoWidth, photoHeight);
-        
-        // Añadir etiqueta del tipo de foto
-        pdf.setFontSize(8);
-        pdf.text(foto.type, currentX, yOffset + photoHeight + 5, { maxWidth: photoWidth });
-
-        // Actualizar posición X
-        currentX += photoWidth + 10;
-
-        // Si llegamos al final de la fila, nueva línea
-        if (currentX + photoWidth > pageWidth - margin) {
-          currentX = margin;
-          yOffset += photoHeight + 15;
-        }
-      } catch (error) {
-        console.error('Error al procesar imagen:', error);
+        count++;
       }
     }
 
-    // Añadir comentarios en nueva página
-    if (session.comentarios) {
-      pdf.addPage();
-      yOffset = margin;
-      pdf.setFontSize(12);
-      pdf.text('Comentarios:', margin, yOffset);
-      yOffset += 10;
+    // Añadir comentarios si hay espacio debajo del grid
+    const commentsY = gridTop + photosPerCol * (cellHeight + 4) + 8;
+    if (comentarios && commentsY + 10 < pageHeight - margin) {
+      pdf.setFontSize(11);
+      pdf.text('Comentarios:', margin, commentsY);
       pdf.setFontSize(10);
-      const splitComments = pdf.splitTextToSize(session.comentarios, pageWidth - 2 * margin);
-      pdf.text(splitComments, margin, yOffset);
+      const splitComments = pdf.splitTextToSize(comentarios, pageWidth - 2 * margin);
+      pdf.text(splitComments, margin, commentsY + 6);
     }
 
-    // Guardar PDF
-    pdf.save(`informe-${patient.nombre}-${patient.apellidos}-${new Date().toISOString()}.pdf`);
+    pdf.save(`informe-${selectedPatient.nombre || ''}-${selectedPatient.apellidos || ''}-${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
   return (
@@ -266,11 +312,11 @@ function App() {
         />
       )}
 
-      {view === 'photos' && selectedPatient && (
+      {view === 'sessions' && selectedPatient && (
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">
-              Fotos de {selectedPatient.nombre} {selectedPatient.apellidos}
+              Sesiones de {selectedPatient.nombre} {selectedPatient.apellidos}
             </h2>
             <button
               onClick={handleBackToList}
@@ -278,6 +324,45 @@ function App() {
             >
               Volver al Listado
             </button>
+          </div>
+          <SessionList
+            sessions={selectedPatient.sesiones || []}
+            onSelectSession={handleSelectSession}
+            onCreateSession={handleCreateSession}
+            onEditSession={handleEditSession}
+            onDeleteSession={handleDeleteSession}
+          />
+        </div>
+      )}
+
+      {view === 'session-form' && selectedPatient && (
+        <SessionForm
+          session={selectedSession !== null ? selectedPatient.sesiones[selectedSession] : null}
+          onSubmit={handleSessionSubmit}
+          onCancel={() => setView('sessions')}
+        />
+      )}
+
+      {view === 'photos' && selectedPatient && selectedSession !== null && (
+        <div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">
+              Fotos de {selectedPatient.nombre} {selectedPatient.apellidos} - {selectedPatient.sesiones[selectedSession].nombre || `Sesión ${selectedSession + 1}`}
+            </h2>
+            <div className="space-x-4">
+              <button
+                onClick={handleBackToSessions}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+              >
+                Volver a Sesiones
+              </button>
+              <button
+                onClick={generatePDF}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors font-semibold"
+              >
+                Generar PDF
+              </button>
+            </div>
           </div>
 
           <div className="mb-6">
