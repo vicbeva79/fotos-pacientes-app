@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
 
 const DOCTORS = [
   "Dr. David Carralero",
@@ -19,97 +19,131 @@ const DOCTORS = [
   "Dr. Carlos Trull"
 ];
 
-function PatientForm({ onAddPatient }) {
-  const [nombre, setNombre] = useState("");
-  const [apellidos, setApellidos] = useState("");
-  const [ficha, setFicha] = useState("");
-  const [doctor, setDoctor] = useState("");
-  const [error, setError] = useState("");
+function PatientForm({ patient, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellidos: '',
+    ficha: '',
+    doctor: ''
+  });
+
+  useEffect(() => {
+    if (patient) {
+      setFormData({
+        nombre: patient.nombre || '',
+        apellidos: patient.apellidos || '',
+        ficha: patient.ficha || '',
+        doctor: patient.doctor || ''
+      });
+    }
+  }, [patient]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!nombre || !apellidos || !ficha || !doctor) {
-      setError("Todos los campos son obligatorios.");
-      return;
-    }
-    setError("");
-    onAddPatient({ nombre, apellidos, ficha, doctor });
-    setNombre("");
-    setApellidos("");
-    setFicha("");
-    setDoctor("");
+    const patientData = {
+      ...formData,
+      id: patient?.id || Date.now().toString(),
+      photos: patient?.photos || [],
+      comments: patient?.comments || ''
+    };
+    onSubmit(patientData);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
-    <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-      <h2 className="text-2xl font-bold mb-4">Agregar Paciente</h2>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="nombre">
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h2 className="text-2xl font-bold mb-6">
+        {patient ? 'Editar Paciente' : 'Nuevo Paciente'}
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="nombre" className="block text-sm font-medium text-gray-700">
             Nombre
           </label>
           <input
-            id="nombre"
             type="text"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Nombre del paciente"
-            value={nombre}
-            onChange={e => setNombre(e.target.value)}
+            id="nombre"
+            name="nombre"
+            value={formData.nombre}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="apellidos">
+
+        <div>
+          <label htmlFor="apellidos" className="block text-sm font-medium text-gray-700">
             Apellidos
           </label>
           <input
-            id="apellidos"
             type="text"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Apellidos del paciente"
-            value={apellidos}
-            onChange={e => setApellidos(e.target.value)}
+            id="apellidos"
+            name="apellidos"
+            value={formData.apellidos}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="ficha">
-            Número de ficha
+
+        <div>
+          <label htmlFor="ficha" className="block text-sm font-medium text-gray-700">
+            Número de Ficha
           </label>
           <input
-            id="ficha"
             type="text"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Número de ficha"
-            value={ficha}
-            onChange={e => setFicha(e.target.value)}
+            id="ficha"
+            name="ficha"
+            value={formData.ficha}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="doctor">
-            Doctor responsable
+
+        <div>
+          <label htmlFor="doctor" className="block text-sm font-medium text-gray-700">
+            Doctor
           </label>
           <select
             id="doctor"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            value={doctor}
-            onChange={e => setDoctor(e.target.value)}
+            name="doctor"
+            value={formData.doctor}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Selecciona un doctor</option>
             {DOCTORS.map((doctor) => (
-              <option key={doctor} value={doctor}>{doctor}</option>
+              <option key={doctor} value={doctor}>
+                {doctor}
+              </option>
             ))}
           </select>
         </div>
-        <button
-          type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-        >
-          Guardar Paciente
-        </button>
+
+        <div className="flex justify-end space-x-4 mt-6">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            {patient ? 'Guardar Cambios' : 'Crear Paciente'}
+          </button>
+        </div>
       </form>
     </div>
   );

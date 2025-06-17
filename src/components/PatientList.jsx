@@ -1,35 +1,62 @@
-function PatientList({ patients, onSelect, selectedIndex }) {
+import React from 'react';
+
+function PatientList({ patients, onSelectPatient, onEditPatient }) {
+  if (patients.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center py-12">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+            />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay pacientes</h3>
+          <p className="mt-1 text-sm text-gray-500">Comienza añadiendo un nuevo paciente.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white shadow-md rounded px-8 pt-6 pb-8">
-      <h2 className="text-2xl font-bold mb-4">Lista de Pacientes</h2>
-      {patients.length === 0 ? (
-        <p className="text-gray-500">No hay pacientes registrados.</p>
-      ) : (
-        <table className="min-w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b">Ficha</th>
-              <th className="py-2 px-4 border-b">Nombre</th>
-              <th className="py-2 px-4 border-b">Apellidos</th>
-              <th className="py-2 px-4 border-b">Doctor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {patients.map((p, idx) => (
-              <tr
-                key={idx}
-                className={`cursor-pointer ${selectedIndex === idx ? 'bg-blue-100' : ''}`}
-                onClick={() => onSelect(idx)}
-              >
-                <td className="py-2 px-4 border-b">{p.ficha}</td>
-                <td className="py-2 px-4 border-b">{p.nombre}</td>
-                <td className="py-2 px-4 border-b">{p.apellidos}</td>
-                <td className="py-2 px-4 border-b">{p.doctor}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {patients.map((patient) => (
+        <div
+          key={patient.id}
+          className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => onSelectPatient(patient)}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {patient.nombre} {patient.apellidos}
+              </h3>
+              <p className="text-sm text-gray-600">Ficha: {patient.ficha}</p>
+              <p className="text-sm text-gray-600">Doctor: {patient.doctor}</p>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditPatient(patient);
+              }}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              Editar
+            </button>
+          </div>
+          <div className="mt-2 text-sm text-gray-500">
+            {patient.photos ? `${patient.photos.length} fotos` : 'Sin fotos'}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
