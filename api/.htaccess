@@ -1,0 +1,21 @@
+# Habilitar CORS
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With"
+
+# Permitir acceso a las fotos
+
+
+# Configurar PHP
+php_value upload_max_filesize 10M
+php_value post_max_size 10M
+php_value max_execution_time 300
+php_value max_input_time 300
+
+# Permitir acceso a los archivos PHP
+Options +FollowSymLinks
+Require all granted
+
+<Files *.php>
+    Require all granted
+</Files> 

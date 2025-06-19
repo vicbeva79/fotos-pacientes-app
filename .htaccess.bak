@@ -1,0 +1,19 @@
+# Habilitar CORS
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With"
+
+# Configuración de directorio
+Options +FollowSymLinks
+AllowOverride All
+Require all granted
+
+# Redirigir todas las peticiones a index.html excepto para archivos existentes
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /fotos-pacientes-app/
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /fotos-pacientes-app/index.html [L]
+</IfModule> 

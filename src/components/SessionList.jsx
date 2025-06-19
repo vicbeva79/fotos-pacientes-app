@@ -4,9 +4,9 @@ function SessionList({ sessions = [], onSelectSession, onCreateSession, onEditSe
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
 
-  const handleDeleteClick = (e, sessionIndex) => {
+  const handleDeleteClick = (e, session) => {
     e.stopPropagation();
-    setSessionToDelete(sessionIndex);
+    setSessionToDelete(session);
     setShowConfirmDialog(true);
   };
 
@@ -59,7 +59,7 @@ function SessionList({ sessions = [], onSelectSession, onCreateSession, onEditSe
             <div
               key={index}
               className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => onSelectSession(index)}
+              onClick={() => onSelectSession(session)}
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -74,14 +74,14 @@ function SessionList({ sessions = [], onSelectSession, onCreateSession, onEditSe
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEditSession(index);
+                      onEditSession(session);
                     }}
                     className="text-blue-600 hover:text-blue-800"
                   >
                     Editar
                   </button>
                   <button
-                    onClick={(e) => handleDeleteClick(e, index)}
+                    onClick={(e) => handleDeleteClick(e, session)}
                     className="text-red-600 hover:text-red-800"
                   >
                     Eliminar

@@ -11,7 +11,9 @@ function SessionForm({ session, onSubmit, onCancel }) {
     if (session) {
       setFormData({
         nombre: session.nombre || '',
-        fecha: session.fecha ? new Date(session.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        fecha: (session.fecha && !isNaN(new Date(session.fecha))) 
+          ? new Date(session.fecha).toISOString().split('T')[0] 
+          : new Date().toISOString().split('T')[0],
         comentarios: session.comentarios || ''
       });
     }

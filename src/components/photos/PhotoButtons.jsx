@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { uploadPhoto, deletePhoto } from '../../services/api';
 
 // Importar las imágenes de los templates
 import profileTemplate from '../../assets/templates/capture-profile.png';
@@ -12,6 +13,7 @@ import rightLateralTemplate from '../../assets/templates/capture-right-lateral.p
 import intraoralTemplate from '../../assets/templates/capture-intraoral.png';
 import lowerOcclusalTemplate from '../../assets/templates/capture-lower-occlusal.png';
 import leftLateralTemplate from '../../assets/templates/capture-left-lateral.png';
+import logoCarralero from '../../assets/templates/Logotipo-horizontal-Dental-Carralero.png';
 
 const PHOTO_TYPES = [
   { 
@@ -79,11 +81,14 @@ const PHOTO_TYPES = [
   }
 ];
 
-function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
+function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto, sesionId, onPhotosUpdated }) {
   const [selectedType, setSelectedType] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef(null);
+
+  // Refuerzo: asegurar siempre un array
+  const safePhotos = Array.isArray(existingPhotos) ? existingPhotos : [];
 
   const showError = (msg) => {
     setErrorMsg(msg);
@@ -159,13 +164,20 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
         reader.onload = async (event) => {
           let imageData = event.target.result;
           try {
-            // Redimensionar antes de rotar
+            // Redimensionar antes de rotar SOLO PARA PREVIEW
             imageData = await resizeImage(imageData);
             const photoType = PHOTO_TYPES.find(p => p.id === selectedType);
             if (photoType && photoType.rotate) {
               imageData = await rotateImage(imageData, 180);
             }
-            onTakePhoto(imageData, selectedType);
+
+            // Subir a la API usando el archivo original
+            const result = await uploadPhoto(sesionId, selectedType, file);
+            if (result.success) {
+              if (onPhotosUpdated) await onPhotosUpdated();
+            } else {
+              showError(result.message || 'Error al subir la foto');
+            }
           } catch (error) {
             showError('Error al procesar la imagen.');
             console.error('Error al procesar la imagen:', error);
@@ -193,6 +205,29 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
     }
   };
 
+  const handleDeletePhotoClick = async (type) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const photo = safePhotos.find(p => p.type === type);
+      if (photo && photo.id) {
+        const result = await deletePhoto(photo.id);
+        if (result.success) {
+          if (onPhotosUpdated) await onPhotosUpdated();
+        } else {
+          showError(result.message || 'Error al eliminar la foto');
+        }
+      } else {
+        if (onPhotosUpdated) await onPhotosUpdated();
+      }
+    } catch (error) {
+      showError('Error al eliminar la foto.');
+      console.error('Error al eliminar la foto:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <>
       {errorMsg && (
@@ -210,10 +245,10 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
       />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-6">
         {PHOTO_TYPES.map((type) => {
-          const existingPhoto = existingPhotos.find(p => p.type === type.id);
+          const existingPhoto = safePhotos.find(p => p.type === type.id);
           const isSelected = selectedType === type.id;
           
-          if (existingPhoto) {
+          if (existingPhoto && existingPhoto.data) {
             return (
               <div key={type.id} className="relative aspect-square group">
                 <img
@@ -223,16 +258,7 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity duration-200 rounded-lg flex items-center justify-center space-x-2">
                   <button
-                    onClick={() => handlePhotoClick(type.id)}
-                    disabled={isProcessing}
-                    className={`opacity-0 group-hover:opacity-100 bg-white text-gray-800 px-4 py-2 rounded-md text-sm font-medium shadow-lg transition-opacity duration-200 ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {isProcessing && isSelected ? 'Procesando...' : 'Retomar'}
-                  </button>
-                  <button
-                    onClick={() => onDeletePhoto(type.id)}
+                    onClick={() => handleDeletePhotoClick(type.id)}
                     disabled={isProcessing}
                     className={`opacity-0 group-hover:opacity-100 bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-lg transition-opacity duration-200 ${
                       isProcessing ? 'opacity-50 cursor-not-allowed' : ''
@@ -254,6 +280,13 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
                 </div>
               </div>
             );
+          } else if (existingPhoto && !existingPhoto.data) {
+            // Foto corrupta o incompleta
+            return (
+              <div key={type.id} className="relative aspect-square group flex items-center justify-center bg-gray-200 rounded-lg">
+                <span className="text-red-500">Foto corrupta</span>
+              </div>
+            );
           }
 
           return (
@@ -261,24 +294,18 @@ function PhotoButtons({ onTakePhoto, existingPhotos = [], onDeletePhoto }) {
               key={type.id}
               onClick={() => handlePhotoClick(type.id)}
               disabled={isProcessing}
-              className={`relative flex flex-col items-center justify-center p-4 rounded-lg bg-white text-gray-800 hover:bg-gray-50 shadow-md transition-all duration-200 aspect-square group min-h-[200px] ${
-                isProcessing && isSelected ? 'opacity-50 cursor-not-allowed' : ''
+              className={`relative aspect-square bg-gray-100 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 ${
+                isProcessing ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              <div className="relative w-full h-full flex items-center justify-center">
                 <img
                   src={type.template}
                   alt={type.label}
-                  className="w-full h-full object-contain p-4"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-200 rounded-lg" />
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-90 p-3 rounded-b-lg">
-                <span className="text-base font-medium block text-center">{type.label}</span>
-                <span className="text-sm text-gray-500 block text-center">{type.description}</span>
-                {isProcessing && isSelected && (
-                  <span className="text-sm text-blue-600 block text-center mt-1">Procesando...</span>
-                )}
+                className="absolute inset-0 w-full h-full object-cover opacity-50"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                <span className="text-lg font-semibold text-gray-800">{type.label}</span>
+                <span className="text-sm text-gray-600 mt-2">{type.description}</span>
               </div>
             </button>
           );
